@@ -20,9 +20,16 @@
 - เลือกแพลน **Free**
 
 ### 3. ใส่ API key (ให้วิเคราะห์ภาพจริง)
-- ในหน้า service → แท็บ **Environment** → **Add Environment Variable**
-- Key: `ANTHROPIC_API_KEY`  Value: `sk-ant-...` (คีย์ของคุณ)
-- Save → Render จะ deploy ใหม่อัตโนมัติ
+เลือกอย่างใดอย่างหนึ่ง — ในหน้า service → แท็บ **Environment** → **Add Environment Variable**
+
+**แบบฟรี (แนะนำ) — Google Gemini:**
+- ไปที่ **aistudio.google.com** → ล็อกอิน Google → **Get API key** → **Create API key** (ฟรี ไม่ต้องผูกบัตร)
+- ที่ Render ใส่ Key: `GEMINI_API_KEY`  Value: `AIza...`
+
+**แบบเสียเงิน — Claude (คุณภาพสูงกว่า):**
+- Key: `ANTHROPIC_API_KEY`  Value: `sk-ant-...` (จาก console.anthropic.com)
+
+Save → Render จะ deploy ใหม่อัตโนมัติ (ระบบเลือก Gemini ก่อนถ้ามีทั้งคู่)
 
 ### 4. เสร็จ
 - ได้ลิงก์ `https://ชื่อ.onrender.com` → เปิดบนมือถือได้เลย

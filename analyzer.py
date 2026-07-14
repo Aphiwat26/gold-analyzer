@@ -66,42 +66,66 @@ def _extract_json(text: str) -> dict:
     return json.loads(m.group(0))
 
 
-def analyze(images: list[dict], context: dict) -> dict:
-    """
-    images: [{"label": "H4", "media_type": "image/png", "data": bytes}, ...]
-    context: {"symbol": "...", "price": "...", "notes": "..."}
-    """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return _mock()
+def _ctx_text(context: dict) -> str:
+    return (f"สัญลักษณ์: {context.get('symbol','XAUUSD')}\n"
+            f"ราคาปัจจุบัน: {context.get('price') or '(ไม่ระบุ)'}\n\n"
+            "วิเคราะห์และตอบเป็น JSON ตามสคีมา")
 
-    try:
-        import anthropic
-    except ImportError:
-        return {**_mock(), "warnings": ["ยังไม่ได้ติดตั้ง anthropic (pip install anthropic)"]}
 
+def _gemini(images, context, api_key):
+    import google.generativeai as genai
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(
+        os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+        system_instruction=SYSTEM_PROMPT,
+    )
+    parts = []
+    for img in images:
+        parts.append(f"ไทม์เฟรม: {img['label']}")
+        parts.append({"mime_type": img["media_type"], "data": img["data"]})
+    parts.append(_ctx_text(context))
+    resp = model.generate_content(parts)
+    result = _extract_json(resp.text)
+    result["mock"] = False
+    result["provider"] = "gemini"
+    return result
+
+
+def _claude(images, context, api_key):
+    import anthropic
     client = anthropic.Anthropic(api_key=api_key)
     content = []
     for img in images:
         content.append({"type": "text", "text": f"ไทม์เฟรม: {img['label']}"})
-        content.append({
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": img["media_type"],
-                "data": base64.standard_b64encode(img["data"]).decode(),
-            },
-        })
-    ctx = (f"สัญลักษณ์: {context.get('symbol','XAUUSD')}\n"
-           f"ราคาปัจจุบัน: {context.get('price','(ไม่ระบุ)')}\n"
-           f"โน้ตเพิ่มเติม: {context.get('notes','-')}")
-    content.append({"type": "text", "text": ctx + "\n\nวิเคราะห์และตอบเป็น JSON ตามสคีมา"})
-
+        content.append({"type": "image", "source": {
+            "type": "base64", "media_type": img["media_type"],
+            "data": base64.standard_b64encode(img["data"]).decode()}})
+    content.append({"type": "text", "text": _ctx_text(context)})
     msg = client.messages.create(
         model=MODEL, max_tokens=1500, system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": content}],
-    )
+        messages=[{"role": "user", "content": content}])
     text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
     result = _extract_json(text)
     result["mock"] = False
+    result["provider"] = "claude"
     return result
+
+
+def analyze(images: list[dict], context: dict) -> dict:
+    """
+    images: [{"label": "H4", "media_type": "image/png", "data": bytes}, ...]
+    context: {"symbol": "...", "price": "..."}
+    เลือกผู้ให้บริการอัตโนมัติ: Gemini (ฟรี) > Claude > mock
+    """
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    claude_key = os.environ.get("ANTHROPIC_API_KEY")
+    try:
+        if gemini_key:
+            return _gemini(images, context, gemini_key)
+        if claude_key:
+            return _claude(images, context, claude_key)
+        return _mock()
+    except ImportError as e:
+        return {**_mock(), "warnings": [f"ยังไม่ได้ติดตั้งไลบรารี: {e}"]}
+    except Exception as e:
+        return {**_mock(), "warnings": [f"เรียก AI ไม่สำเร็จ: {e}", "แสดงผลตัวอย่างแทน"]}

@@ -1,4 +1,6 @@
 fastapi>=0.110
 uvicorn>=0.29
 python-multipart>=0.0.9
-anthropic>=0.40      # ใช้เมื่อวิเคราะห์ภาพจริง (ต้องมี ANTHROPIC_API_KEY)
+# เลือกอย่างใดอย่างหนึ่งสำหรับวิเคราะห์ภาพจริง:
+google-generativeai>=0.8    # Gemini (มี free tier ไม่ต้องผูกบัตร)
+anthropic>=0.40             # Claude (คุณภาพสูง เสียเงินตามใช้จริง)

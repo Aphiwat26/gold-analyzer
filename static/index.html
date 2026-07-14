@@ -110,7 +110,7 @@ function render(d){
   const el=document.getElementById("result");el.style.display="block";
   const rr=d.risk_reward!=null?d.risk_reward:"-";
   el.innerHTML=`
-    ${d.mock?'<div class="mockbanner">⚠️ โหมดตัวอย่าง (MOCK) — ยังไม่ได้ตั้ง ANTHROPIC_API_KEY จึงยังไม่ได้วิเคราะห์ภาพจริง</div>':''}
+    ${d.mock?'<div class="mockbanner">⚠️ โหมดตัวอย่าง (MOCK) — ยังไม่ได้ตั้ง API key (GEMINI_API_KEY ฟรี หรือ ANTHROPIC_API_KEY) จึงยังไม่ได้วิเคราะห์ภาพจริง</div>':''}
     <div style="display:flex;align-items:center;gap:12px">
       <span class="badge b${d.bias}">${d.bias}</span>
       <div style="flex:1"><div class="muted">ความมั่นใจ ${d.confidence}%</div>

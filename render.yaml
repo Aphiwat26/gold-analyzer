@@ -6,7 +6,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
     envVars:
+      # เลือกใส่อย่างใดอย่างหนึ่ง (Gemini ฟรี แนะนำสำหรับเริ่มต้น):
+      - key: GEMINI_API_KEY
+        sync: false          # จาก aistudio.google.com (ฟรี ไม่ต้องผูกบัตร)
       - key: ANTHROPIC_API_KEY
-        sync: false          # ใส่ค่าจริงในหน้า Render (ไม่เก็บในโค้ด)
-      - key: CLAUDE_MODEL
-        value: claude-sonnet-5
+        sync: false          # จาก console.anthropic.com (เสียเงินตามใช้จริง)
