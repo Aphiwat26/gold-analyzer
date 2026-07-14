@@ -73,18 +73,19 @@ def _ctx_text(context: dict) -> str:
 
 
 def _gemini(images, context, api_key):
-    import google.generativeai as genai
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
-        system_instruction=SYSTEM_PROMPT,
-    )
+    from google import genai
+    from google.genai import types
+    client = genai.Client(api_key=api_key)
     parts = []
     for img in images:
         parts.append(f"ไทม์เฟรม: {img['label']}")
-        parts.append({"mime_type": img["media_type"], "data": img["data"]})
+        parts.append(types.Part.from_bytes(data=img["data"], mime_type=img["media_type"]))
     parts.append(_ctx_text(context))
-    resp = model.generate_content(parts)
+    resp = client.models.generate_content(
+        model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+        contents=parts,
+        config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
+    )
     result = _extract_json(resp.text)
     result["mock"] = False
     result["provider"] = "gemini"
@@ -126,6 +127,8 @@ def analyze(images: list[dict], context: dict) -> dict:
             return _claude(images, context, claude_key)
         return _mock()
     except ImportError as e:
+        print(f"[analyze] import error: {e}")
         return {**_mock(), "warnings": [f"ยังไม่ได้ติดตั้งไลบรารี: {e}"]}
     except Exception as e:
+        print(f"[analyze] error: {e}")   # ให้เห็นใน Render Logs เวลาดีบัก
         return {**_mock(), "warnings": [f"เรียก AI ไม่สำเร็จ: {e}", "แสดงผลตัวอย่างแทน"]}
