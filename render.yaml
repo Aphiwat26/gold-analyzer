@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: xauusd-chart-analyzer
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # ใส่ค่าจริงในหน้า Render (ไม่เก็บในโค้ด)
+      - key: CLAUDE_MODEL
+        value: claude-sonnet-5

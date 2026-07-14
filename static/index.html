@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XAUUSD Chart Analyzer — วิเคราะห์กราฟ 3 TF</title>
+<style>
+  :root{--bg:#0b0e13;--card:#141922;--card2:#1a2029;--line:#242c38;--txt:#e6edf3;
+    --sub:#8b97a7;--gold:#f0b90b;--green:#2ecc71;--red:#ff5c5c;--blue:#4aa3ff}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;
+    -webkit-text-size-adjust:100%}
+  body{background:var(--bg);color:var(--txt);padding:16px;max-width:1000px;margin:0 auto}
+  h1{font-size:20px;margin-bottom:4px}.muted{color:var(--sub);font-size:13px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:16px}
+  .uploads{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:720px){.uploads{grid-template-columns:1fr}}
+  /* ===== มือถือ ===== */
+  @media(max-width:480px){
+    body{padding:12px}
+    h1{font-size:18px}
+    .panel{padding:12px}
+    .fields{grid-template-columns:1fr}
+    button{width:100%;padding:14px}
+    .drop{min-height:150px}           /* พื้นที่แตะกว้างขึ้นบนจอสัมผัส */
+    .card .value{font-size:20px}
+    .cards{grid-template-columns:1fr 1fr}
+  }
+  .slot{background:var(--card2);border:1px dashed var(--line);border-radius:10px;padding:10px;text-align:center}
+  .slot input[type=text]{width:70px;background:var(--bg);border:1px solid var(--line);color:var(--gold);
+    border-radius:6px;padding:3px 6px;text-align:center;font-weight:700;margin-bottom:8px}
+  .drop{border-radius:8px;min-height:120px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;overflow:hidden;background:var(--bg)}
+  .drop img{max-width:100%;max-height:180px;border-radius:6px}
+  .drop span{color:var(--sub);font-size:12px;padding:20px}
+  .fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  .fields input,.fields textarea{width:100%;background:var(--bg);border:1px solid var(--line);
+    color:var(--txt);border-radius:8px;padding:8px}
+  label.f{font-size:12px;color:var(--sub);display:block;margin-bottom:4px}
+  button{background:var(--gold);color:#111;border:0;border-radius:10px;padding:12px 20px;
+    font-weight:700;cursor:pointer;margin-top:12px;font-size:15px}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin:12px 0}
+  .card{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
+  .card .label{color:var(--sub);font-size:12px}.card .value{font-size:22px;font-weight:700;margin-top:4px}
+  .g{color:var(--green)}.r{color:var(--red)}.b{color:var(--blue)}.gold{color:var(--gold)}
+  .badge{display:inline-block;padding:4px 14px;border-radius:8px;font-weight:700;font-size:16px}
+  .bBUY{background:rgba(46,204,113,.15);color:var(--green)}
+  .bSELL{background:rgba(255,92,92,.15);color:var(--red)}
+  .bNEUTRAL{background:rgba(139,151,167,.15);color:var(--sub)}
+  ul{margin:6px 0 0 18px}li{margin:4px 0;font-size:14px}
+  .warn{color:var(--gold);font-size:13px}
+  .bar{height:8px;background:var(--card);border-radius:5px;overflow:hidden;margin-top:6px}
+  .bar>span{display:block;height:100%;background:var(--gold)}
+  .mockbanner{background:rgba(240,185,11,.12);color:var(--gold);border:1px solid var(--gold);
+    border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:12px}
+  .disc{color:var(--sub);font-size:12px;margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+</style>
+</head>
+<body>
+  <h1>📊 XAUUSD Chart Analyzer</h1>
+  <div class="muted">อัปโหลดภาพกราฟ 3 ไทม์เฟรม (ใหญ่ → เล็ก) แล้ววิเคราะห์จุดเข้า + SL/TP พร้อมเหตุผล</div>
+
+  <div class="panel">
+    <div class="uploads" id="uploads"></div>
+    <div style="margin-top:12px"><label class="f">ราคาทองปัจจุบัน (ใส่ให้แม่นขึ้น)</label>
+      <input id="price" inputmode="decimal" placeholder="เช่น 4080.5" style="width:100%;background:var(--bg);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px"></div>
+    <button id="go">วิเคราะห์ทอง</button>
+  </div>
+
+  <div class="panel" id="result" style="display:none"></div>
+
+<script>
+const SLOTS=[{k:"high",l:"H4"},{k:"mid",l:"H1"},{k:"low",l:"M15"}];
+const files={};
+const up=document.getElementById("uploads");
+SLOTS.forEach(s=>{
+  const d=document.createElement("div");d.className="slot";
+  d.innerHTML=`<input type="text" id="lab_${s.k}" value="${s.l}">
+    <div class="drop" id="drop_${s.k}"><span>คลิกเพื่อเลือกภาพ ${s.l}</span></div>
+    <input type="file" id="file_${s.k}" accept="image/*" style="display:none">`;
+  up.appendChild(d);
+  const fi=d.querySelector(`#file_${s.k}`),dr=d.querySelector(`#drop_${s.k}`);
+  dr.onclick=()=>fi.click();
+  fi.onchange=()=>{const f=fi.files[0];if(!f)return;files[s.k]=f;
+    const r=new FileReader();r.onload=e=>dr.innerHTML=`<img src="${e.target.result}">`;r.readAsDataURL(f);};
+});
+
+document.getElementById("go").onclick=async()=>{
+  if(!files.high||!files.mid||!files.low){alert("กรุณาอัปโหลดครบทั้ง 3 ไทม์เฟรม");return;}
+  const btn=document.getElementById("go");btn.disabled=true;btn.textContent="กำลังวิเคราะห์…";
+  const fd=new FormData();
+  fd.append("tf_high",files.high);fd.append("tf_mid",files.mid);fd.append("tf_low",files.low);
+  fd.append("symbol","XAUUSD");
+  fd.append("price",document.getElementById("price").value);
+  fd.append("label_high",document.getElementById("lab_high").value);
+  fd.append("label_mid",document.getElementById("lab_mid").value);
+  fd.append("label_low",document.getElementById("lab_low").value);
+  try{
+    const r=await fetch("/analyze",{method:"POST",body:fd});
+    const d=await r.json();
+    if(d.error){render_err(d.error);}else{render(d);}
+  }catch(e){render_err(e.message);}
+  btn.disabled=false;btn.textContent="วิเคราะห์";
+};
+
+function num(v){return v==null?"-":v;}
+function render_err(m){const el=document.getElementById("result");el.style.display="block";
+  el.innerHTML=`<div class="warn">เกิดข้อผิดพลาด: ${m}</div>`;}
+function render(d){
+  const el=document.getElementById("result");el.style.display="block";
+  const rr=d.risk_reward!=null?d.risk_reward:"-";
+  el.innerHTML=`
+    ${d.mock?'<div class="mockbanner">⚠️ โหมดตัวอย่าง (MOCK) — ยังไม่ได้ตั้ง ANTHROPIC_API_KEY จึงยังไม่ได้วิเคราะห์ภาพจริง</div>':''}
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="badge b${d.bias}">${d.bias}</span>
+      <div style="flex:1"><div class="muted">ความมั่นใจ ${d.confidence}%</div>
+        <div class="bar"><span style="width:${d.confidence}%"></span></div></div>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="label">Entry</div><div class="value b">${num(d.entry)}</div></div>
+      <div class="card"><div class="label">Stop Loss</div><div class="value r">${num(d.stop_loss)}</div></div>
+      <div class="card"><div class="label">Take Profit</div><div class="value g">${num(d.take_profit)}</div></div>
+      <div class="card"><div class="label">Risk:Reward</div><div class="value gold">${rr}</div></div>
+    </div>
+    <b>เหตุผล</b><ul>${(d.reasons||[]).map(x=>`<li>${x}</li>`).join("")}</ul>
+    ${(d.warnings&&d.warnings.length)?`<div style="margin-top:10px"><b class="warn">ข้อควรระวัง</b>
+      <ul>${d.warnings.map(x=>`<li class="warn">${x}</li>`).join("")}</ul></div>`:''}
+    <div class="disc">เครื่องมือช่วยวิเคราะห์เพื่อการศึกษา ไม่ใช่คำแนะนำการลงทุน — ตัดสินใจเทรดด้วยความรับผิดชอบของคุณเอง</div>`;
+}
+</script>
+</body>
+</html>
