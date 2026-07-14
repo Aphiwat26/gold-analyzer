@@ -81,15 +81,30 @@ def _gemini(images, context, api_key):
         parts.append(f"ไทม์เฟรม: {img['label']}")
         parts.append(types.Part.from_bytes(data=img["data"], mime_type=img["media_type"]))
     parts.append(_ctx_text(context))
-    resp = client.models.generate_content(
-        model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
-        contents=parts,
-        config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
-    )
-    result = _extract_json(resp.text)
-    result["mock"] = False
-    result["provider"] = "gemini"
-    return result
+    cfg = types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT)
+
+    # ลองหลายชื่อโมเดล (ชื่อเปลี่ยนบ่อย) — latest ก่อน แล้ว fallback
+    candidates = [m for m in [
+        os.environ.get("GEMINI_MODEL"),
+        "gemini-flash-latest",      # ชี้รุ่นล่าสุดอัตโนมัติ (แนะนำ)
+        "gemini-3.5-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-2.5-flash-lite",
+    ] if m]
+
+    last_err = None
+    for model in candidates:
+        try:
+            resp = client.models.generate_content(model=model, contents=parts, config=cfg)
+            result = _extract_json(resp.text)
+            result.update({"mock": False, "provider": "gemini", "model": model})
+            return result
+        except Exception as e:
+            last_err = e
+            if "404" in str(e) or "NOT_FOUND" in str(e):
+                continue          # ชื่อโมเดลนี้ใช้ไม่ได้ ลองตัวถัดไป
+            raise
+    raise RuntimeError(f"ไม่พบโมเดล Gemini ที่ใช้ได้: {last_err}")
 
 
 def _claude(images, context, api_key):
